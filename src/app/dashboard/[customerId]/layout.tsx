@@ -19,6 +19,7 @@ export default function DashboardLayout({
         <nav className="bg-gray-800 text-white p-4">
           <ul className="flex space-x-4">
             <li>
+
               <Link
                 href={`/dashboard/${params.customerId}/orders`}
                 className={`hover:text-gray-300 ${
@@ -36,6 +37,16 @@ export default function DashboardLayout({
                 }`}
               >
                 Profile
+              </Link>
+            </li>
+            <li>
+              <Link
+                href={`/dashboard/${params.customerId}/change-password`}
+                className={`hover:text-gray-300 ${
+                  pathname.endsWith("/change-password") ? "font-bold" : ""
+                }`}
+              >
+                Change Password
               </Link>
             </li>
           </ul>

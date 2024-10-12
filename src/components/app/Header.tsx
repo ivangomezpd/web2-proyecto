@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/app/AuthContext";
 import { useRouter } from "next/navigation";
 const Header = () => {
-  const { isLoggedIn, username, setIsLoggedIn, setUsername } = useAuth();
+  const { isLoggedIn, username, setIsLoggedIn, setUsername, idCesta } = useAuth();
   const router = useRouter();
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -23,7 +23,7 @@ const Header = () => {
       <nav>
         <div className="flex items-center space-x-4">
         <Button asChild variant="ghost" className="ml-4">
-            <Link href="/cesta">Cesta</Link>
+            <Link href={`/cesta/${idCesta}`}>Cesta</Link>
           </Button>
           <Button asChild variant="ghost" className="ml-4">
             <Link href="/products">Productos</Link>

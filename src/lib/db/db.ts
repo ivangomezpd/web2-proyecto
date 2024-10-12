@@ -81,15 +81,15 @@ export async function getUser(username: string, password: string) {
         }
 
         // Compute JWT token
-        
+
         const secret = process.env.JWT_SECRET;
         if (!secret) {
             throw new Error('JWT_SECRET is not defined in environment variables');
         }
         const token = jwt.sign(
-            { 
-                id: user.id, 
-                username: user.username 
+            {
+                id: user.id,
+                username: user.username
             },
             secret,
             { expiresIn: '1h' }
@@ -163,7 +163,11 @@ export async function getCustomerOrders(customerId: string) {
     try {
         const orders = await db.all(
             `SELECT OrderID, OrderDate, 
-            (SELECT SUM(UnitPrice * Quantity) FROM "Order Details" WHERE OrderID = Orders.OrderID) AS TotalImporte 
+            (SELECT SUM(UnitPrice * Quantity) 
+            
+            FROM "Order Details" WHERE OrderID = Orders.OrderID) AS TotalImporte,
+            (SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END 
+            FROM cobro WHERE orderId = Orders.OrderID) AS Cobrado
             FROM Orders WHERE CustomerID = ? ORDER BY OrderDate DESC`,
             [customerId]
         );
@@ -201,30 +205,67 @@ export async function getProduct(productId: string) {
     return product;
 }
 
-export async function cesta(productId: string, username: string, cantidad: number) {
+
+export async function associateCestaIdWithUsername(cestaId: string, username: string) {
     const db = await getDb();
     try {
+        // se mezclan la cesta que tenia con la nueva
+        await db.run(`
+            UPDATE cesta
+            SET username = ?
+            WHERE cestaId = ?
+        `, [username, cestaId]);
+
+        await db.run(`
+            UPDATE cesta
+            SET cestaId = ?
+            WHERE username = ?
+        `, [cestaId, username]);
+
+        console.log(`Associated cestaId ${cestaId} with username ${username}`);
+    } catch (error) {
+        console.error('Error associating cestaId with username:', error);
+        throw error;
+    }
+}
+
+
+export async function cesta(productId: string, cestaId: string, username: string, cantidad: number) {
+    const db = await getDb();
+    try {
+        // Drop the 'cesta' table if it exists
+        // await db.run(`DROP TABLE IF EXISTS cesta`);
         // Create the 'cesta' table if it doesn't exist
         await db.run(`
             CREATE TABLE IF NOT EXISTS cesta (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 productId INTEGER NOT NULL,
-                username TEXT NOT NULL,
+                cestaId TEXT NOT NULL,
+                username TEXT NULL,
                 cantidad INTEGER NOT NULL,
-                UNIQUE(productId, username)
+                UNIQUE(productId, cestaId)
             )
         `);
-        
+
         // Insert or update the quantity in the 'cesta' table
         await db.run(`
-            INSERT INTO cesta (productId, username, cantidad)
-            VALUES (:productId, :username, :cantidad)
-            ON CONFLICT(productId, username) DO UPDATE SET
+            INSERT INTO cesta (productId, cestaId, cantidad, username)
+            VALUES (:productId, :cestaId, :cantidad, :username)
+            ON CONFLICT(productId, cestaId) DO UPDATE SET
             cantidad =  :cantidad
-        `, { 
-            ':productId': productId, 
-            ':username': username, 
-            ':cantidad': cantidad 
+        `, {
+            ':productId': productId,
+            ':username': username,
+            ':cantidad': cantidad,
+            ':cestaId': cestaId
+        });
+
+        // Delete records with cantidad = 0
+        await db.run(`
+            DELETE FROM cesta
+            WHERE cestaId = :cestaId and cantidad = 0
+        `, {
+            ':cestaId': cestaId
         });
 
     } catch (error) {
@@ -233,7 +274,7 @@ export async function cesta(productId: string, username: string, cantidad: numbe
     }
 }
 
-export async function getCesta(username: string) {
+export async function getCesta(idCesta: string) {
     const db = await getDb();
     try {
         // Fetch items from the 'cesta' table for the given username
@@ -241,8 +282,8 @@ export async function getCesta(username: string) {
             SELECT c.productId, p.productName, c.cantidad
             FROM cesta c
             JOIN Products p ON c.productId = p.ProductID
-            WHERE c.username = ?
-        `, [username]);
+            WHERE c.cestaId = ?
+        `, [idCesta]);
 
         return cestaItems;
     } catch (error) {
@@ -257,7 +298,7 @@ export async function createOrder(username: string, idCesta: string) {
         await db.run('BEGIN TRANSACTION');
 
         // Get CustomerId from the username
-        const customer = await db.get('SELECT CustomerID FROM Customers WHERE CustomerID = ?', 
+        const customer = await db.get('SELECT CustomerID FROM Customers WHERE CustomerID = ?',
             [username]);
         if (!customer) {
             throw new Error('Customer not found');
@@ -301,7 +342,7 @@ export async function createOrder(username: string, idCesta: string) {
 
         await db.run('COMMIT');
 
-        return {orderId, totalAmount};
+        return { orderId, totalAmount };
     } catch (error) {
         await db.run('ROLLBACK');
         console.error('Error creating order:', error);
@@ -339,3 +380,12 @@ export async function saveCobro(customerId: string, orderId: number, amount: num
         throw error;
     }
 }
+
+export async function setPassword(customerId: string, currentPassword: string, newPassword: string) {
+    const db = await getDb();
+    const user = await db.get('SELECT * FROM users WHERE username = ? AND password = ?', [customerId, currentPassword]);
+    if (!user) {
+        throw new Error('Invalid username or password');
+    }
+    await db.run('UPDATE users SET password = ? WHERE username = ?', [newPassword, customerId]);
+}   

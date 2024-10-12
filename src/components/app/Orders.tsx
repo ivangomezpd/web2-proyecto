@@ -11,6 +11,7 @@ function Orders({orders, customerId}: {orders: any[], customerId: string}) {
             <TableHead>Order ID</TableHead>
             <TableHead>Order Date</TableHead>
             <TableHead>Amount</TableHead>
+            <TableHead>Pagado</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -27,6 +28,7 @@ function Orders({orders, customerId}: {orders: any[], customerId: string}) {
               <TableCell>
                 {order.TotalImporte}
               </TableCell>
+              <TableCell>{order.Cobrado ? "Yes" : "No"}</TableCell>
             </TableRow>
           ))}
         </TableBody>

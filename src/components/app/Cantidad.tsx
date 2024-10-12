@@ -12,7 +12,7 @@ import { cesta } from '@/lib/db/db';
 import Link from 'next/link';
 
 const formSchema = z.object({
-  cantidad: z.number().min(1, { message: 'La cantidad debe ser al menos 1' }),
+  cantidad: z.number().min(0, { message: 'La cantidad debe ser al menos 1' }),
 });
 
 interface CantidadProps {
@@ -37,9 +37,12 @@ export default function Cantidad({ productoId, cantidad }: CantidadProps) {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     
     setIsLoading(true);
+    setSuccess(false);
+    setError(false);
     try {
-     
-      await cesta(productoId.toString(), idCesta.toString(), values.cantidad);
+      
+     console.log("cantidad", values.cantidad);
+      await cesta(productoId.toString(), idCesta.toString(), username, values.cantidad);
       setSuccess(true);
       // Aquí puedes añadir lógica adicional después de añadir a la cesta
     } catch (error) {
@@ -74,7 +77,7 @@ export default function Cantidad({ productoId, cantidad }: CantidadProps) {
         
         <div className="mt-2">
           <Link href="/products" className="text-blue-500 hover:underline mr-4">Seguir comprando</Link>
-          <Link href="/cesta" className="text-blue-500 hover:underline">Ver cesta</Link>
+          <Link href={`/cesta/${idCesta}`} className="text-blue-500 hover:underline">Ver cesta</Link>
         </div>
         Producto añadido a la cesta correctamente
         </p>

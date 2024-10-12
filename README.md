@@ -20,36 +20,41 @@ Se trata de hacer una web que presente unos productos, permita al usuario selecc
 
 ### Tecnologia a usar
 1. Vamos a usar un framwework que tiene mucha traccion que se llama nextjs. Se trata de un framework que combina front / back en un unico proyecto. 
-
 2. La base de datos que vamos a usar es sql y el modelo es de de Northwind, una base de datos que ya hemos usado en la practicas de sql.
-
 3. Para la pasarela de pago usaremos la pasarela redsys, una pasarela espa;ola de bastante uso.
-
-4. Los datos para el registro de usuario son mail y password. Hay que validar el mail enviando un mensaje al correo indicado. Para hacerlo usaremos el api de resend.
-
-5. Para los componentes de dise;o usaremos shadcn, que usar tailwind por debajo.
+4. Los datos para el registro de usuario son user y password. 
+5. Para los componentes de diseño usaremos shadcn, que usa tailwind por debajo.
 
 ### Especificaciones.
 
-1. La password no puede viajar en claro a el servidor y se usara xxxx para ofuscarla.
+1. Habra un sigung y un login, para que los usuarios puedan registrarse y logearse. Cuando se haga el login se generara un jwt y se guardara en localStorage. Siempre que se tome el token del localStorage, se validara este en el servidor, por si ha sido alterado o ha caducado.
+2. La password no puede viajar en claro a el servidor y se usara xxxx para ofuscarla.
+3. Todas las keys usadas en los servicios usado hay que ponerlo en el .env. El .env  no se subira a github
+4. Habra una pagina que liste todos los productos
+5. Seleccionando un producto nos iremos a la pagina del producto y podremos meter la cantidad.
+6. Cuando metamos la cantidad se metera el dato es una cesta. Hay que tener en cuenta que el usuario puede no estar autenticado cuando empiece a comprar. 
+7. Cuando el usuario se logea se conecta la cesta al usuario. Si el usuario sale y vuelve a entrar la cesta sigue estando.
+8. Si el usuario no se logea la cesta se pierde.
+9. El usuario puede cambiar la cantidad del producto. Si pone un 0, se elimina de la cesta
+10. Cuando el usuario ve la cesta debe de poder confirmar esta. Significa que se creara un registro en Orders y varios en Order Details, que contengan lo que ha pedido.
+11. Cuando ha confirmado el pedido, podra verlo, ya que esta logeado. En esta pagina del pedido podra pagarlo con la pasarela.
+12 Cuando pague el pedido se creara una registro en 
+```sql
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                orderId INTEGER NOT NULL,
+                customerId TEXT NOT NULL,
+                amount REAL NOT NULL,
+                authorizationCode TEXT NOT NULL UNIQUE,
+                fecha TEXT NOT NULL
+```
+Esto indicara al sistema que el pedido esta pagado
 
-2. Todas las keys usadas en los servicios usado hay que ponerlo en el .env. El .env  no se subira a github
+13. Si el usuario ha cancelado la pasarela o no tiene fondos, entonces debera de poder intentarlo otra vez.
+14. Cuando el usuario se logea debe de ir a una pagina que llamamos dasboard
+15. Si se intenta entrar en el dashboard sin estar logeado, debe de redireccionarnos al login o la home.
+16. Cambiar la password.
 
-3. El usuario seleccionar por cada producto una cantidad y esto se a;adira a una cesta.
 
-4. Si un usuario sale de la web y vuelve a entrar, le apareceran los registros de la cesta.
-
-5. El usuario puede eliminar productos y/o cambiar la cantidad.
-
-6. Cuando el usuario confirma la cesta, debe de meter la direccion de envio con los campos calle, codigo postal, municipio, provincia.
-
-7 Confirmada la direccion, que quedara asociada al pedido, se le pedira que paque.
-
-8. Si el usuario paga, enviar un email con lo que ha pedido.
-
-9. Cuando desde el comercio se le haga el envio, enviar mail con la envio.
-
-10. El cliente debe de poder ver los pedidos y el estado.
 
 
 ### sobre la pasarela de pago redsys
@@ -101,17 +106,25 @@ CREATE TABLE IF NOT EXISTS cobro (
             )
 ```
 
-### Nivel 2. Comercio
+### Nivel 2. Mejoras en el cliente
+
+
+1. En la pagina de productos poner un sidenav con las categorias. Pinchando que aparezcan los productos
+2. Pagina los productos de 10 en 10
+
+
+#### Perfil comercio
 
 Se trata de soluccionar la parte del comercio. Habra usuarios registrados al que el admin del sistema le otorgara permisos de gestor del ecommerce.
 
 Los usuarios con permisos gestor podran:
 
-1. Ver las compras realiadas y el estado en el que han quedado.
-2. Cambiar el estado de las compras a enviado.
-3. Enviar email a los compradores informandoles de ofertas. A todos o a los seleccionados.
-4. Ventas usando el tiempo como variable (dia/mes/hora/trimetre/semestre/aaaa).
-5. Ventas usando la  categoria y el tiempo
+1. Lista de clientes
+2. Lista de ultimas compras
+3. Compras realizadas por cliente
+4. Cambiar estado de enviado a un pedido
+5. Ventas usando el tiempo como variable (dia/mes/hora/trimetre/semestre/aaaa).
+6. Ventas usando la  categoria y el tiempo
 
 ### Nivel 3. Refactoring 
 

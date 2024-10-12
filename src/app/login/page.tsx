@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { associateCestaIdWithUsername } from "@/lib/db/db";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
@@ -28,7 +29,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { setIsLoggedIn, setUsername, setId } = useAuth();
+  const { setIsLoggedIn, setUsername, setId, idCesta } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -49,6 +50,7 @@ export default function LoginPage() {
         setUsername(user.username);
         setId(user.id);
         localStorage.setItem("user", JSON.stringify(user));
+        await associateCestaIdWithUsername(idCesta.toString(), user.username);
         router.push(`/dashboard/${user.username}`);
       } else {
         setError("Invalid username or password");

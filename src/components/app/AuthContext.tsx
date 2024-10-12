@@ -3,6 +3,9 @@
 import React, { createContext, useState, useContext, useCallback, useEffect } from "react";
 import { verifyToken } from "@/lib/serverUtils";
 import { useRouter } from "next/navigation";
+import { associateCestaIdWithUsername } from "@/lib/db/db";
+
+
 
 /**
  * Represents the shape of the authentication context.
@@ -60,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setId(0);
     setIdCesta(Math.floor(Math.random() * 1000000));
     localStorage.removeItem("user");
-    router.push("/login");
+    router.push("/");
   }, [router]);
 
   useEffect(() => {
@@ -69,11 +72,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (storedUser) {
       const user = JSON.parse(storedUser);
       // Verify the token with the server
-      verifyToken(user.token).then((result: { valid: boolean; payload?: any }) => {
+      verifyToken(user.token).then(async (result: { valid: boolean; payload?: any }) => {
         if (result.valid) {
           setIsLoggedIn(true);
           setUsername(user.username);
           setId(user.id);
+          console.log("idCesta", idCesta);
+          await associateCestaIdWithUsername(idCesta.toString(), user.username);
+
           setLoading(false);
         } else {
           logout();
@@ -83,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     // Verify the token with the server
    
-  }, [logout]);
+  }, [logout, idCesta]);
 
   return (
     <AuthContext.Provider
