@@ -103,14 +103,12 @@ export async function getUser(username: string, password: string) {
 }
 
 export async function getCustomer(customerId: string) {
-    console.log('getCustomer', customerId);
     const db = await getDb();
     const customer = await db.get('SELECT * FROM Customers WHERE CustomerID = ?', [customerId]);
     return customer;
 }
 
 export async function saveCustomer(customerId: string, values: any) {
-    console.log('saveCustomer', customerId, values);
     const db = await getDb();
 
     // Prepare the SQL query with all fields

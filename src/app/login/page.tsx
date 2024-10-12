@@ -45,7 +45,6 @@ export default function LoginPage() {
     try {
       const user = await getUser(values.username, values.password);
       if (user) {
-        console.log(user);
         setIsLoggedIn(true);
         setUsername(user.username);
         setId(user.id);

@@ -20,6 +20,17 @@ export const metadata: Metadata = {
   description: "Ecommerce de productos",
 };
 
+/**
+ * RootLayout component
+ * 
+ * This component serves as the root layout for the entire application.
+ * It wraps the entire app with the AuthProvider for global authentication state management.
+ * It also sets up the basic HTML structure, applies global styles, and includes the Header component.
+ * 
+ * @param {Object} props - The component props
+ * @param {React.ReactNode} props.children - The child components to be rendered within the layout
+ * @returns {JSX.Element} The root layout structure
+ */
 export default function RootLayout({
   children,
 }: Readonly<{

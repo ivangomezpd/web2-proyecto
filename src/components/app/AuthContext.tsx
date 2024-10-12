@@ -1,13 +1,16 @@
 "use client";
-import React, { createContext, useState, useContext } from "react";
+
+import React, { createContext, useState, useContext, useCallback, useEffect } from "react";
 import { verifyToken } from "@/lib/serverUtils";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect } from "react";
+
+/**
+ * Represents the shape of the authentication context.
+ */
 export interface AuthContextType {
   isLoggedIn: boolean;
   setIsLoggedIn: React.Dispatch<React.SetStateAction<boolean>>;
   username: string;
-
   setUsername: React.Dispatch<React.SetStateAction<string>>;
   id: number;
   setId: React.Dispatch<React.SetStateAction<number>>;
@@ -17,8 +20,16 @@ export interface AuthContextType {
   loading: boolean;
 }
 
+/**
+ * Creates the authentication context with undefined as the default value.
+ */
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * Custom hook to use the authentication context.
+ * @throws {Error} If used outside of an AuthProvider.
+ * @returns {AuthContextType} The authentication context.
+ */
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -27,6 +38,11 @@ export const useAuth = () => {
   return context;
 };
 
+/**
+ * AuthProvider component that manages the authentication state.
+ * @param {Object} props - The component props.
+ * @param {React.ReactNode} props.children - The child components.
+ */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [username, setUsername] = useState("");
@@ -35,6 +51,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  /**
+   * Logs out the user and resets the authentication state.
+   */
   const logout = useCallback(() => {
     setIsLoggedIn(false);
     setUsername("");
@@ -52,13 +71,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Verify the token with the server
       verifyToken(user.token).then((result: { valid: boolean; payload?: any }) => {
         if (result.valid) {
-          console.log("Token válido");
           setIsLoggedIn(true);
           setUsername(user.username);
           setId(user.id);
           setLoading(false);
         } else {
-          console.log("Token inválido");
           logout();
           setLoading(false);
         }

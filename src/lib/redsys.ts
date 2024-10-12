@@ -38,6 +38,5 @@ export async function getRedsysCheckout(customerId: string, origin: string, amou
         signature: signatureBase64,
         url: process.env.NEXT_PUBLIC_REDSYS_URL
     };
-    console.log("response", response);
     return response
 }
