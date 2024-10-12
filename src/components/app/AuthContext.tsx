@@ -12,6 +12,8 @@ export interface AuthContextType {
     logout: () => void;
     idCesta: number;
     setIdCesta: React.Dispatch<React.SetStateAction<number>>;
+    loading: boolean;
+    
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,8 +31,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [username, setUsername] = useState("");
     const [id, setId] = useState(0);
     const [idCesta, setIdCesta] = useState(Math.floor(Math.random() * 1000000));
+    const [loading, setLoading] = useState(true);
 
     React.useEffect(() => {
+        setLoading(true);
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
             const user = JSON.parse(storedUser);
@@ -38,8 +42,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUsername(user.username);
             setId(user.id);
         }
+        setLoading(false);
     }, []);
-    
+
     const logout = () => {
         setIsLoggedIn(false);
         setUsername("");
@@ -47,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIdCesta(Math.floor(Math.random() * 1000000));
     };
     return (
-        <AuthContext.Provider value= {{ idCesta, setIdCesta, isLoggedIn, username, id, setIsLoggedIn, setUsername, setId, logout }}>
+        <AuthContext.Provider value= {{loading, idCesta, setIdCesta, isLoggedIn, username, id, setIsLoggedIn, setUsername, setId, logout }}>
     { children }
     </AuthContext.Provider>
     );

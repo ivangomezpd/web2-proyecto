@@ -72,7 +72,7 @@ export async function getUser(username: string, password: string) {
     const db = await getDb();
     try {
         const user = await db.get(
-            'SELECT * FROM users WHERE username = ? AND password = ?',
+            'SELECT id, username FROM users WHERE username = ? AND password = ?',
             [username, password]
         );
 
