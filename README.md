@@ -25,86 +25,126 @@ Se trata de hacer una web que presente unos productos, permita al usuario selecc
 4. Los datos para el registro de usuario son user y password. 
 5. Para los componentes de diseño usaremos shadcn, que usa tailwind por debajo.
 
-### Especificaciones.
 
-1. Habra un sigung y un login, para que los usuarios puedan registrarse y logearse. Cuando se haga el login se generara un jwt y se guardara en localStorage. Siempre que se tome el token del localStorage, se validara este en el servidor, por si ha sido alterado o ha caducado.
-2. La password no puede viajar en claro a el servidor y se usara xxxx para ofuscarla.
-3. Todas las keys usadas en los servicios usado hay que ponerlo en el .env. El .env  no se subira a github
-4. Habra una pagina que liste todos los productos
-5. Seleccionando un producto nos iremos a la pagina del producto y podremos meter la cantidad.
-6. Cuando metamos la cantidad se metera el dato es una cesta. Hay que tener en cuenta que el usuario puede no estar autenticado cuando empiece a comprar. 
-7. Cuando el usuario se logea se conecta la cesta al usuario. Si el usuario sale y vuelve a entrar la cesta sigue estando.
-8. Si el usuario no se logea la cesta se pierde.
-9. El usuario puede cambiar la cantidad del producto. Si pone un 0, se elimina de la cesta
-10. Cuando el usuario ve la cesta debe de poder confirmar esta. Significa que se creara un registro en Orders y varios en Order Details, que contengan lo que ha pedido.
-11. Cuando ha confirmado el pedido, podra verlo, ya que esta logeado. En esta pagina del pedido podra pagarlo con la pasarela.
-12 Cuando pague el pedido se creara una registro en 
+
+## Especificaciones del Proyecto
+
+### 1. Autenticación y Gestión de Usuarios
+
+#### 1.1 Registro y Login
+- Implementar sistema de registro (SignUp) y login.
+- Generar JWT al hacer login y almacenarlo en localStorage.
+- Validar el token en el servidor en cada uso para verificar integridad y caducidad.
+
+#### 1.2 Seguridad
+- Hashear la contraseña antes de enviarla al servidor.
+- Implementar cambio de contraseña para usuarios autenticados.
+
+#### 1.3 Gestión de Sesión
+- Redirigir al dashboard tras login exitoso.
+- Redirigir a login o home si se intenta acceder al dashboard sin autenticación.
+
+#### 1.4 Perfil de Usuario
+- Permitir edición del registro de cliente (customer) autenticado.
+
+### 2. Catálogo de Productos
+
+#### 2.1 Listado de Productos
+- Desarrollar página que muestre todos los productos disponibles.
+
+#### 2.2 Página de Producto Individual
+- Mostrar detalles del producto seleccionado.
+- Permitir especificar cantidad deseada.
+
+### 3. Gestión del Carrito de Compras
+
+#### 3.1 Funcionalidad del Carrito
+- Agregar productos con cantidades especificadas.
+- Mantener carrito para usuarios no autenticados.
+- Asociar carrito al usuario tras autenticación.
+- Persistir carrito entre sesiones para usuarios autenticados.
+- Eliminar carrito si el usuario no se autentica.
+
+#### 3.2 Modificación del Carrito
+- Permitir cambios en la cantidad de productos.
+- Eliminar productos si la cantidad se establece en 0.
+
+### 4. Proceso de Pedido
+
+#### 4.1 Confirmación del Pedido
+- Permitir confirmación del contenido del carrito.
+- Crear registros en tablas Orders y Order Details.
+
+#### 4.2 Visualización del Pedido
+- Mostrar detalles del pedido confirmado a usuarios autenticados.
+
+### 5. Proceso de Pago
+
+#### 5.1 Integración de Pasarela de Pago (Redsys)
+- Implementar pago utilizando Redsys.
+- URL de pruebas: https://pagosonline.redsys.es/entornosPruebas.html
+- Datos de tarjeta de prueba:
+  - Número: 4548810000000003
+  - Caducidad: 12/29
+  - Código de seguridad: 123
+
+#### 5.2 Registro de Pago
+- Crear registro en la tabla `cobro` tras pago exitoso.
+
+#### 5.3 Manejo de Errores de Pago
+- Implementar reintentos si el pago falla o es cancelado.
+
+### 6. Configuración y Seguridad
+
+#### 6.1 Gestión de Variables de Entorno
+- Almacenar claves de servicios en archivo .env.
+- Excluir .env de control de versiones (no subir a GitHub).
+
+## Estructura de la Base de Datos (SQLite)
+
+Tablas añadidas a la base de datos.
+
+Archivo: `northwind.db`
+
+### Tablas
+
+#### 1. users
 ```sql
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                orderId INTEGER NOT NULL,
-                customerId TEXT NOT NULL,
-                amount REAL NOT NULL,
-                authorizationCode TEXT NOT NULL UNIQUE,
-                fecha TEXT NOT NULL
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    acceptPolicy BOOLEAN NOT NULL,
+    acceptMarketing BOOLEAN NOT NULL
+);
 ```
-Esto indicara al sistema que el pedido esta pagado
+Notas:
+- Se inicializa con todos los customers.
+- Utilizada para autenticación.
 
-13. Si el usuario ha cancelado la pasarela o no tiene fondos, entonces debera de poder intentarlo otra vez.
-14. Cuando el usuario se logea debe de ir a una pagina que llamamos dasboard
-15. Si se intenta entrar en el dashboard sin estar logeado, debe de redireccionarnos al login o la home.
-16. Cambiar la password.
-
-
-
-
-### sobre la pasarela de pago redsys
-
-https://pagosonline.redsys.es/entornosPruebas.html
-
-tarjeta 4548810000000003
-caducidad :12/29
-codigo de seguridad: 123
-
-
-### sobre la base de datos
-
-la base de datos sqlite esta en el proyecto: northwind.db
-
-1. USER
-TABLA USER PARA LA AUTENTICACION
-SE INICIALIZA CON TODOS LOS CUSTOMERS 
-
-```
- CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        acceptPolicy BOOLEAN NOT NULL,
-        acceptMarketing BOOLEAN NOT NULL
-      );
-```
-2. CESTA
-```
+#### 2. cesta
+```sql
 CREATE TABLE IF NOT EXISTS cesta (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                productId INTEGER NOT NULL,
-                username TEXT NOT NULL,
-                cantidad INTEGER NOT NULL,
-                UNIQUE(productId, username)
-            )
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    productId INTEGER NOT NULL,
+    username TEXT NOT NULL,
+    cantidad INTEGER NOT NULL,
+    UNIQUE(productId, username)
+);
 ```
 
-3. COBROS
-```
+#### 3. cobro
+```sql
 CREATE TABLE IF NOT EXISTS cobro (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                orderId INTEGER NOT NULL,
-                customerId TEXT NOT NULL,
-                amount REAL NOT NULL,
-                authorizationCode TEXT NOT NULL UNIQUE,
-                fecha TEXT NOT NULL
-            )
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    orderId INTEGER NOT NULL,
+    customerId TEXT NOT NULL,
+    amount REAL NOT NULL,
+    authorizationCode TEXT NOT NULL UNIQUE,
+    fecha TEXT NOT NULL
+);
 ```
+
 
 ### Nivel 2. Mejoras en el cliente
 

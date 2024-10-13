@@ -4,15 +4,18 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/app/AuthContext";
 import { useRouter } from "next/navigation";
 const Header = () => {
-  const { isLoggedIn, username, setIsLoggedIn, setUsername, idCesta } = useAuth();
+  const { isLoggedIn, loading, username, setIsLoggedIn, setUsername, idCesta } = useAuth();
   const router = useRouter();
+
   const handleLogout = () => {
     localStorage.removeItem("user");
     setIsLoggedIn(false);
     setUsername("");
     router.push("/login");
   };
-
+  if (loading) {
+    return <div>Loading...</div>;
+  }
   return (
     <header className="flex justify-between items-center py-4 px-6 bg-white shadow-sm">
       <div className="flex items-center">

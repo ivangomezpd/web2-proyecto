@@ -78,7 +78,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUsername(user.username);
           setId(user.id);
           await associateCestaIdWithUsername(idCesta.toString(), user.username);
-
           setLoading(false);
         } else {
           logout();
