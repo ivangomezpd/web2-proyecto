@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { hashPassword } from "@/lib/utils";
 
 export default function ChangePassword() {
   const { customerId } = useParams();
@@ -27,7 +28,12 @@ export default function ChangePassword() {
     }
 
     try {
-      await setPassword(customerId as string, currentPassword, newPassword);
+      
+        // Hash the new password before sending it to the server
+        const hashedNewPassword = await hashPassword(newPassword);
+        const currentHashedPassword = await hashPassword(currentPassword);
+        await setPassword(customerId as string, currentHashedPassword, hashedNewPassword);
+
       setSuccess(true);
       setCurrentPassword("");
       setNewPassword("");

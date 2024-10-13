@@ -29,7 +29,6 @@ export default function Cesta() {
   useEffect(() => {
     async function fetchCesta() {
       try {
-        console.log("idCesta en cesta", idCesta);
         const items = await getCesta(idCesta.toString());
         setCestaItems(items);
       } catch (err) {

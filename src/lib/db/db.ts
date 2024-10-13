@@ -2,7 +2,7 @@
 import { Database } from 'sqlite3';
 import { open } from 'sqlite';
 import jwt from 'jsonwebtoken';
-
+import { hashPassword } from '@/lib/utils';
 let db: any = null;
 
 export async function getDb() {
@@ -30,8 +30,8 @@ export async function insertUser(username: string, password: string, acceptPolic
     const db = await getDb();
     try {
         // Create the users table if it doesn't exist
-        // Drop the users table if it exists
-        // await db.run(`DROP TABLE IF EXISTS users`);
+        //Drop the users table if it exists
+     await db.run(`DROP TABLE IF EXISTS users`);
         await db.run(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,13 +42,7 @@ export async function insertUser(username: string, password: string, acceptPolic
       );
     `);
 
-        // Insert sample users from Customers table
-        await db.run(`
-    INSERT INTO users (username, password, acceptPolicy, acceptMarketing)
-      SELECT CustomerID, CustomerID, false, false FROM Customers;
-
-    `);
-
+ 
         // Check if the username already exists
         const existingUser = await db.get('SELECT * FROM users WHERE username = ?', [username]);
         if (existingUser) {
@@ -222,7 +216,6 @@ export async function associateCestaIdWithUsername(cestaId: string, username: st
             WHERE username = ?
         `, [cestaId, username]);
 
-        console.log(`Associated cestaId ${cestaId} with username ${username}`);
     } catch (error) {
         console.error('Error associating cestaId with username:', error);
         throw error;

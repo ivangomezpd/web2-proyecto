@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { associateCestaIdWithUsername } from "@/lib/db/db";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { hashPassword } from "@/lib/utils";
 import * as z from "zod";
 import {
   Form,
@@ -44,6 +45,13 @@ export default function LoginPage() {
     setError(null);
 
     try {
+      // Hash the password before sending it to the server
+      const hashedPassword = await hashPassword(values.password);
+      // Replace the plain text password with the hashed version
+      values.password = hashedPassword;
+
+      // Function to hash the password
+     
       const user = await getUser(values.username, values.password);
       if (user) {
         setIsLoggedIn(true);

@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { insertUser } from '@/lib/db/db';
+import { hashPassword } from '@/lib/utils';
 
 const formSchema = z.object({
   username: z.string().min(3, {
@@ -38,10 +39,10 @@ export default function SignupPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: '',
-      password: '',
-      confirmPassword: '',
-      acceptPolicy: false,
+      username: 'ALFKI',
+      password: '123456Dd.',
+      confirmPassword: '123456Dd.',
+      acceptPolicy: true,
       acceptMarketing: false,
     },
   });
@@ -49,6 +50,10 @@ export default function SignupPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
 
     try {
+      // Hash the password before sending it to the server
+      const hashedPassword = await hashPassword(values.password);
+      // Replace the plain text password with the hashed version
+      values.password = hashedPassword;
       await insertUser(values.username, values.password, values.acceptPolicy, values.acceptMarketing);
       router.push('/login');
     } catch (error) {

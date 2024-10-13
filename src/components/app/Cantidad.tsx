@@ -41,7 +41,6 @@ export default function Cantidad({ productoId, cantidad }: CantidadProps) {
     setError(false);
     try {
       
-     console.log("cantidad", values.cantidad);
       await cesta(productoId.toString(), idCesta.toString(), username, values.cantidad);
       setSuccess(true);
       // Aquí puedes añadir lógica adicional después de añadir a la cesta
