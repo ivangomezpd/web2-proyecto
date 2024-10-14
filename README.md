@@ -5,9 +5,8 @@
 2. Trabajar con Bases de datos relacionales
 3. Comprender como funciona la autenticacion.
 4. Usar una pasarela de pago 
-5. Desplegar el proyecto en servicios cloud.
-6. Usar apis y sercicios externos.
-8. Cuidar el diseño
+5. Usar apis y sercicios externos.
+6. Cuidar el diseño
 
 ## Contexto del proyecto
 
@@ -123,13 +122,14 @@ Notas:
 
 #### 2. cesta
 ```sql
-CREATE TABLE IF NOT EXISTS cesta (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    productId INTEGER NOT NULL,
-    username TEXT NOT NULL,
-    cantidad INTEGER NOT NULL,
-    UNIQUE(productId, username)
-);
+ CREATE TABLE IF NOT EXISTS cesta (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                productId INTEGER NOT NULL,
+                cestaId TEXT NOT NULL,
+                username TEXT NULL,
+                cantidad INTEGER NOT NULL,
+                UNIQUE(productId, cestaId)
+            )
 ```
 
 #### 3. cobro
