@@ -68,11 +68,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setLoading(true);
+    
     const storedUser = localStorage.getItem("user");
+    console.log("storedUser", storedUser);
     if (storedUser) {
       const user = JSON.parse(storedUser);
       // Verify the token with the server
       verifyToken(user.token).then(async (result: { valid: boolean; payload?: any }) => {
+        console.log("result", result);
         if (result.valid) {
           setIsLoggedIn(true);
           setUsername(user.username);
@@ -83,7 +86,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           logout();
           setLoading(false);
         }
-      });
+      })
+    } else {
+      setLoading(false);
     }
     // Verify the token with the server
    

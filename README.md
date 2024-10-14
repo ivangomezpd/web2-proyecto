@@ -3,12 +3,11 @@
     
 1. Desmostrar el uso del front y back
 2. Trabajar con Bases de datos relacionales
-3. Usar jwt como token
+3. Comprender como funciona la autenticacion.
 4. Usar una pasarela de pago 
 5. Desplegar el proyecto en servicios cloud.
 6. Usar apis y sercicios externos.
-7. Cumplir requisitos de seguridad.
-8. Cuidar el dise;o.
+8. Cuidar el diseño
 
 ## Contexto del proyecto
 
@@ -32,7 +31,7 @@ Se trata de hacer una web que presente unos productos, permita al usuario selecc
 ### 1. Autenticación y Gestión de Usuarios
 
 #### 1.1 Registro y Login
-- Implementar sistema de registro (SignUp) y login.
+- Implementar sistema de registro (SignUp) y login. En el signup daremos de alta Customers
 - Generar JWT al hacer login y almacenarlo en localStorage.
 - Validar el token en el servidor en cada uso para verificar integridad y caducidad.
 
@@ -155,17 +154,25 @@ CREATE TABLE IF NOT EXISTS cobro (
 
 #### Perfil comercio
 
-Se trata de soluccionar la parte del comercio. Habra usuarios registrados al que el admin del sistema le otorgara permisos de gestor del ecommerce.
+Claro, aquí tienes el texto reformateado:
 
-Los usuarios con permisos gestor podran:
+---
 
-1. Lista de clientes
-2. Lista de ultimas compras
-3. Compras realizadas por cliente
-4. Cambiar estado de enviado a un pedido
-5. Ventas usando el tiempo como variable (dia/mes/hora/trimetre/semestre/aaaa).
-6. Ventas usando la  categoria y el tiempo
+Se trata de solucionar la parte del comercio. Habrá usuarios registrados a los que el administrador del sistema les otorgará permisos de gestor del eCommerce.
 
+Los usuarios con permisos de gestor podrán:
+
+1. Ver la lista de clientes.
+2. Ver la lista de las últimas compras.
+3. Consultar las compras realizadas por cada cliente.
+4. Cambiar el estado de un pedido a "enviado".
+5. Analizar las ventas usando el tiempo como variable (día/mes/hora/trimestre/semestre/año).
+6. Analizar las ventas usando la categoría y el tiempo.
+7. Consultar el log de actividad del usuario. 
+
+--- 
+
+Espero que esto sea lo que necesitabas.
 ### Nivel 3. Refactoring 
 
 1. Usar la orientacion a objetos para mejorar el codigo.

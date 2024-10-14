@@ -2,7 +2,8 @@
 import { Database } from 'sqlite3';
 import { open } from 'sqlite';
 import jwt from 'jsonwebtoken';
-import { hashPassword } from '@/lib/utils';
+
+
 let db: any = null;
 
 export async function getDb() {
@@ -11,7 +12,7 @@ export async function getDb() {
             filename: './northwind.db',
             driver: Database
         });
-    }
+    }    
     return db;
 }
 
@@ -31,7 +32,7 @@ export async function insertUser(username: string, password: string, acceptPolic
     try {
         // Create the users table if it doesn't exist
         //Drop the users table if it exists
-     await db.run(`DROP TABLE IF EXISTS users`);
+
         await db.run(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,11 +43,17 @@ export async function insertUser(username: string, password: string, acceptPolic
       );
     `);
 
- 
+
         // Check if the username already exists
         const existingUser = await db.get('SELECT * FROM users WHERE username = ?', [username]);
         if (existingUser) {
             throw new Error('Username already exists');
+        }
+
+        // Check if the customer exists in the Customers table
+        const existingCustomer = await db.get('SELECT CustomerID FROM Customers WHERE CustomerID = ?', [username]);
+        if (existingCustomer) {
+            throw new Error('Customer  exist');
         }
 
         // Insert the new user
@@ -54,6 +61,8 @@ export async function insertUser(username: string, password: string, acceptPolic
             'INSERT INTO users (username, password, acceptPolicy, acceptMarketing) VALUES (?, ?, ?, ?)',
             [username, password, acceptPolicy, acceptMarketing]
         );
+        // insert into customers
+        await db.run('INSERT INTO Customers (CustomerID) VALUES (?)', [username]);
 
         return result.lastID;
     } catch (error) {
@@ -203,24 +212,39 @@ export async function getProduct(productId: string) {
 export async function associateCestaIdWithUsername(cestaId: string, username: string) {
     const db = await getDb();
     try {
-        // se mezclan la cesta que tenia con la nueva
-        await db.run(`
-            UPDATE cesta
-            SET username = ?
-            WHERE cestaId = ?
+        // Select distinct products and their quantities for the given username and cestaId
+        // solo puede haber en la cesta un producto con una cantidad
+        // por eso se agrupa por productId y se queda con la cantidad maxima
+        const existingProducts = await db.all(`
+            SELECT DISTINCT productId, cantidad
+            FROM cesta
+            WHERE username = ? OR cestaId = ?
+            GROUP BY productId
+            HAVING MAX(cantidad)
         `, [username, cestaId]);
 
+        // Delete existing entries for the given username and cestaId
         await db.run(`
-            UPDATE cesta
-            SET cestaId = ?
-            WHERE username = ?
-        `, [cestaId, username]);
+            DELETE FROM cesta
+            WHERE username = ? OR cestaId = ?
+        `, [username, cestaId]);
 
+        // Insert the existing products into the cesta
+        for (const product of existingProducts) {
+            await db.run(`
+                    INSERT OR REPLACE INTO cesta (productId, cestaId, username, cantidad)
+                    VALUES (?, ?, ?, ?)
+                `, [product.productId, cestaId, username, product.cantidad]);
+        }
     } catch (error) {
         console.error('Error associating cestaId with username:', error);
         throw error;
     }
 }
+
+
+
+
 
 
 export async function cesta(productId: string, cestaId: string, username: string, cantidad: number) {
@@ -312,8 +336,7 @@ export async function createOrder(username: string, idCesta: string) {
             FROM cesta c
             JOIN Products p ON c.productId = p.ProductID
             WHERE c.username = ?
-        `, [idCesta]);
-
+        `, [username]);
         // Insert into Order Details
         for (const item of cestaItems) {
             await db.run(`
