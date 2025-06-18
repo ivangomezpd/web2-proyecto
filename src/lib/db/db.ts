@@ -19,7 +19,12 @@ export async function getDb() {
 export async function getAllProducts() {
     const db = await getDb();
     try {
-        const products = await db.all('SELECT * FROM Products');
+        const products = await db.all(`
+            SELECT p.*, c.CategoryName, c.Description as CategoryDescription
+            FROM Products p
+            LEFT JOIN Categories c ON p.CategoryID = c.CategoryID
+            ORDER BY p.ProductName
+        `);
         return products;
     } catch (error) {
         console.error('Error fetching all products:', error);
@@ -75,16 +80,23 @@ export async function getUser(username: string, password: string) {
     const db = await getDb();
     try {
         const user = await db.get(
-            'SELECT id, username FROM users WHERE username = ? AND password = ?',
-            [username, password]
+            'SELECT id, username, password FROM users WHERE username = ?',
+            [username]
         );
 
         if (!user) {
             throw new Error('Invalid username or password');
         }
 
-        // Compute JWT token
+        // Verificar contraseña usando la nueva función
+        const { verifyPassword } = await import('@/lib/utils');
+        const isValidPassword = await verifyPassword(password, user.password);
+        
+        if (!isValidPassword) {
+            throw new Error('Invalid username or password');
+        }
 
+        // Compute JWT token
         const secret = process.env.JWT_SECRET;
         if (!secret) {
             throw new Error('JWT_SECRET is not defined in environment variables');
@@ -97,8 +109,12 @@ export async function getUser(username: string, password: string) {
             secret,
             { expiresIn: '1h' }
         );
-        user.token = token;
-        return user;
+        
+        // No retornar la contraseña en el objeto user
+        const { password: _, ...userWithoutPassword } = user;
+        userWithoutPassword.token = token;
+        
+        return userWithoutPassword;
     } catch (error) {
         console.error('Error fetching user:', error);
         throw error;
@@ -164,17 +180,19 @@ export async function saveCustomer(customerId: string, values: any) {
 export async function getCustomerOrders(customerId: string) {
     const db = await getDb();
     try {
-        const orders = await db.all(
-            `SELECT OrderID, OrderDate, 
-            (SELECT SUM(UnitPrice * Quantity) 
-            
-            FROM "Order Details" WHERE OrderID = Orders.OrderID) AS TotalImporte,
-            (SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END 
-            FROM cobro WHERE orderId = Orders.OrderID) AS Cobrado
-            FROM Orders WHERE CustomerID = ? ORDER BY OrderDate DESC`,
-            [customerId]
-        );
-
+        const orders = await db.all(`
+            SELECT o.*, 
+                   SUM(od.UnitPrice * od.Quantity) as totalAmount,
+                   os.status as orderStatus,
+                   CASE WHEN cob.id IS NOT NULL THEN 'paid' ELSE 'pending' END as paymentStatus
+            FROM Orders o
+            LEFT JOIN "Order Details" od ON o.OrderID = od.OrderID
+            LEFT JOIN order_status os ON o.OrderID = os.orderId
+            LEFT JOIN cobro cob ON o.OrderID = cob.orderId
+            WHERE o.CustomerID = ?
+            GROUP BY o.OrderID
+            ORDER BY o.OrderDate DESC
+        `, [customerId]);
         return orders;
     } catch (error) {
         console.error('Error fetching customer orders:', error);
@@ -204,7 +222,12 @@ export async function getOrder(orderId: string) {
 
 export async function getProduct(productId: string) {
     const db = await getDb();
-    const product = await db.get('SELECT * FROM Products WHERE ProductID = ?', [productId]);
+    const product = await db.get(`
+        SELECT p.*, c.CategoryName, c.Description as CategoryDescription
+        FROM Products p
+        LEFT JOIN Categories c ON p.CategoryID = c.CategoryID
+        WHERE p.ProductID = ?
+    `, [productId]);
     return product;
 }
 
@@ -294,12 +317,19 @@ export async function cesta(productId: string, cestaId: string, username: string
 export async function getCesta(idCesta: string) {
     const db = await getDb();
     try {
-        // Fetch items from the 'cesta' table for the given username
+        // Fetch items from the 'cesta' table for the given cestaId with product details
         const cestaItems = await db.all(`
-            SELECT c.productId, p.productName, c.cantidad
+            SELECT 
+                c.productId, 
+                c.cantidad,
+                p.ProductName,
+                p.UnitPrice,
+                p.UnitsInStock,
+                p.Discontinued
             FROM cesta c
             JOIN Products p ON c.productId = p.ProductID
             WHERE c.cestaId = ?
+            ORDER BY p.ProductName
         `, [idCesta]);
 
         return cestaItems;
@@ -404,4 +434,379 @@ export async function setPassword(customerId: string, currentPassword: string, n
         throw new Error('Invalid username or password');
     }
     await db.run('UPDATE users SET password = ? WHERE username = ?', [newPassword, customerId]);
+}
+
+export async function getAllCategories() {
+    const db = await getDb();
+    try {
+        const categories = await db.all(`
+            SELECT c.*, COUNT(p.ProductID) as ProductCount
+            FROM Categories c
+            LEFT JOIN Products p ON c.CategoryID = p.CategoryID
+            GROUP BY c.CategoryID
+            ORDER BY c.CategoryName
+        `);
+        return categories;
+    } catch (error) {
+        console.error('Error fetching categories:', error);
+        throw error;
+    }
+}
+
+export async function getProductsByCategory(categoryId?: string, searchQuery?: string) {
+    const db = await getDb();
+    try {
+        let query = `
+            SELECT p.*, c.CategoryName, c.Description as CategoryDescription
+            FROM Products p
+            LEFT JOIN Categories c ON p.CategoryID = c.CategoryID
+            WHERE 1=1
+        `;
+        
+        const params: any[] = [];
+        
+        if (categoryId && categoryId !== 'all') {
+            query += ` AND p.CategoryID = ?`;
+            params.push(categoryId);
+        }
+        
+        if (searchQuery && searchQuery.trim()) {
+            query += ` AND p.ProductName LIKE ?`;
+            params.push(`%${searchQuery.trim()}%`);
+        }
+        
+        query += ` ORDER BY p.ProductName`;
+        
+        const products = await db.all(query, params);
+        return products;
+    } catch (error) {
+        console.error('Error fetching products by category:', error);
+        throw error;
+    }
+}
+
+export async function getProductsByCategoryPaginated(
+  categoryId?: string, 
+  searchQuery?: string, 
+  page: number = 1, 
+  limit: number = 10
+) {
+    const db = await getDb();
+    try {
+        let whereClause = 'WHERE 1=1';
+        const params: any[] = [];
+        
+        if (categoryId && categoryId !== 'all') {
+            whereClause += ` AND p.CategoryID = ?`;
+            params.push(categoryId);
+        }
+        
+        if (searchQuery && searchQuery.trim()) {
+            whereClause += ` AND p.ProductName LIKE ?`;
+            params.push(`%${searchQuery.trim()}%`);
+        }
+        
+        // Get total count
+        const countQuery = `
+            SELECT COUNT(*) as total
+            FROM Products p
+            LEFT JOIN Categories c ON p.CategoryID = c.CategoryID
+            ${whereClause}
+        `;
+        
+        const countResult = await db.get(countQuery, params);
+        const total = countResult.total;
+        
+        // Calculate pagination
+        const offset = (page - 1) * limit;
+        const totalPages = Math.ceil(total / limit);
+        
+        // Get paginated products
+        const productsQuery = `
+            SELECT p.*, c.CategoryName, c.Description as CategoryDescription
+            FROM Products p
+            LEFT JOIN Categories c ON p.CategoryID = c.CategoryID
+            ${whereClause}
+            ORDER BY p.ProductName
+            LIMIT ? OFFSET ?
+        `;
+        
+        const products = await db.all(productsQuery, [...params, limit, offset]);
+        
+        return {
+            products,
+            pagination: {
+                currentPage: page,
+                totalPages,
+                totalItems: total,
+                itemsPerPage: limit,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1
+            }
+        };
+    } catch (error) {
+        console.error('Error fetching paginated products:', error);
+        throw error;
+    }
+}
+
+export async function getPaidOrders() {
+    const db = await getDb();
+    try {
+        const paidOrders = await db.all(`
+            SELECT o.*, c.amount as PaidAmount, c.authorizationCode, c.fecha as PaymentDate
+            FROM Orders o
+            JOIN cobro c ON o.OrderID = c.orderId
+            ORDER BY c.fecha DESC
+        `);
+        return paidOrders;
+    } catch (error) {
+        console.error('Error fetching paid orders:', error);
+        throw error;
+    }
+}
+
+export async function initializeAdminTables() {
+    const db = await getDb();
+    try {
+        // Crear tabla de roles de usuario
+        await db.run(`
+            CREATE TABLE IF NOT EXISTS user_roles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'user',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(username)
+            )
+        `);
+
+        // Crear tabla de logs de actividad
+        await db.run(`
+            CREATE TABLE IF NOT EXISTS activity_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL,
+                action TEXT NOT NULL,
+                details TEXT,
+                ip_address TEXT,
+                user_agent TEXT,
+                created_at TEXT NOT NULL
+            )
+        `);
+
+        // Crear tabla de estados de pedidos
+        await db.run(`
+            CREATE TABLE IF NOT EXISTS order_status (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                orderId INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                updated_by TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                notes TEXT,
+                UNIQUE(orderId)
+            )
+        `);
+
+        // Insertar admin por defecto si no existe
+        const adminExists = await db.get('SELECT * FROM user_roles WHERE username = ?', ['admin']);
+        if (!adminExists) {
+            await db.run(
+                'INSERT INTO user_roles (username, role, created_at, updated_at) VALUES (?, ?, ?, ?)',
+                ['admin', 'admin', new Date().toISOString(), new Date().toISOString()]
+            );
+        }
+
+        console.log('✅ Tablas de administración inicializadas');
+    } catch (error) {
+        console.error('Error initializing admin tables:', error);
+        throw error;
+    }
+}
+
+export async function getUserRole(username: string) {
+    const db = await getDb();
+    try {
+        const role = await db.get('SELECT role FROM user_roles WHERE username = ?', [username]);
+        return role ? role.role : 'user';
+    } catch (error) {
+        console.error('Error getting user role:', error);
+        return 'user';
+    }
+}
+
+export async function isAdmin(username: string) {
+    const role = await getUserRole(username);
+    return role === 'admin';
+}
+
+export async function getAllCustomers() {
+    const db = await getDb();
+    try {
+        const customers = await db.all(`
+            SELECT c.*, 
+                   COUNT(o.OrderID) as totalOrders,
+                   SUM(od.UnitPrice * od.Quantity) as totalSpent
+            FROM Customers c
+            LEFT JOIN Orders o ON c.CustomerID = o.CustomerID
+            LEFT JOIN "Order Details" od ON o.OrderID = od.OrderID
+            GROUP BY c.CustomerID
+            ORDER BY c.CompanyName
+        `);
+        return customers;
+    } catch (error) {
+        console.error('Error fetching all customers:', error);
+        throw error;
+    }
+}
+
+export async function getRecentOrders(limit: number = 10) {
+    const db = await getDb();
+    try {
+        const orders = await db.all(`
+            SELECT o.*, c.CompanyName, c.ContactName,
+                   SUM(od.UnitPrice * od.Quantity) as totalAmount,
+                   os.status as orderStatus,
+                   CASE WHEN cob.id IS NOT NULL THEN 'paid' ELSE 'pending' END as paymentStatus
+            FROM Orders o
+            LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
+            LEFT JOIN "Order Details" od ON o.OrderID = od.OrderID
+            LEFT JOIN order_status os ON o.OrderID = os.orderId
+            LEFT JOIN cobro cob ON o.OrderID = cob.orderId
+            GROUP BY o.OrderID
+            ORDER BY o.OrderDate DESC
+            LIMIT ?
+        `, [limit]);
+        return orders;
+    } catch (error) {
+        console.error('Error fetching recent orders:', error);
+        throw error;
+    }
+}
+
+export async function updateOrderStatus(orderId: number, status: string, updatedBy: string, notes?: string) {
+    const db = await getDb();
+    try {
+        await db.run(`
+            INSERT OR REPLACE INTO order_status (orderId, status, updated_by, updated_at, notes)
+            VALUES (?, ?, ?, ?, ?)
+        `, [orderId, status, updatedBy, new Date().toISOString(), notes || null]);
+
+        // Log the activity
+        await logActivity(updatedBy, 'update_order_status', `Order ${orderId} status changed to ${status}`);
+
+        return true;
+    } catch (error) {
+        console.error('Error updating order status:', error);
+        throw error;
+    }
+}
+
+export async function getSalesAnalytics(timeFrame: string, categoryId?: string) {
+    const db = await getDb();
+    try {
+        let dateFormat = '';
+        let groupBy = '';
+        
+        switch (timeFrame) {
+            case 'hour':
+                dateFormat = "strftime('%Y-%m-%d %H:00:00', o.OrderDate)";
+                groupBy = "strftime('%Y-%m-%d %H:00:00', o.OrderDate)";
+                break;
+            case 'day':
+                dateFormat = "date(o.OrderDate)";
+                groupBy = "date(o.OrderDate)";
+                break;
+            case 'month':
+                dateFormat = "strftime('%Y-%m', o.OrderDate)";
+                groupBy = "strftime('%Y-%m', o.OrderDate)";
+                break;
+            case 'quarter':
+                dateFormat = "strftime('%Y-Q%m/3', o.OrderDate)";
+                groupBy = "strftime('%Y-Q%m/3', o.OrderDate)";
+                break;
+            case 'semester':
+                dateFormat = "strftime('%Y-S%m/6', o.OrderDate)";
+                groupBy = "strftime('%Y-S%m/6', o.OrderDate)";
+                break;
+            case 'year':
+                dateFormat = "strftime('%Y', o.OrderDate)";
+                groupBy = "strftime('%Y', o.OrderDate)";
+                break;
+            default:
+                dateFormat = "date(o.OrderDate)";
+                groupBy = "date(o.OrderDate)";
+        }
+
+        let query = `
+            SELECT ${dateFormat} as time_period,
+                   COUNT(DISTINCT o.OrderID) as total_orders,
+                   SUM(od.UnitPrice * od.Quantity) as total_revenue,
+                   COUNT(DISTINCT o.CustomerID) as unique_customers
+        `;
+
+        if (categoryId) {
+            query += `, c.CategoryName`;
+        }
+
+        query += `
+            FROM Orders o
+            JOIN "Order Details" od ON o.OrderID = od.OrderID
+            JOIN Products p ON od.ProductID = p.ProductID
+        `;
+
+        if (categoryId) {
+            query += `JOIN Categories c ON p.CategoryID = c.CategoryID WHERE c.CategoryID = ?`;
+        }
+
+        query += `
+            GROUP BY ${groupBy}
+            ORDER BY time_period DESC
+        `;
+
+        const params = categoryId ? [categoryId] : [];
+        const analytics = await db.all(query, params);
+        return analytics;
+    } catch (error) {
+        console.error('Error fetching sales analytics:', error);
+        throw error;
+    }
+}
+
+export async function logActivity(username: string, action: string, details?: string, ipAddress?: string, userAgent?: string) {
+    const db = await getDb();
+    try {
+        await db.run(`
+            INSERT INTO activity_logs (username, action, details, ip_address, user_agent, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `, [username, action, details || null, ipAddress || null, userAgent || null, new Date().toISOString()]);
+    } catch (error) {
+        console.error('Error logging activity:', error);
+    }
+}
+
+export async function getActivityLogs(username?: string, limit: number = 100) {
+    const db = await getDb();
+    try {
+        let query = `
+            SELECT al.*, ur.role
+            FROM activity_logs al
+            LEFT JOIN user_roles ur ON al.username = ur.username
+        `;
+        
+        const params: any[] = [];
+        
+        if (username) {
+            query += ` WHERE al.username = ?`;
+            params.push(username);
+        }
+        
+        query += ` ORDER BY al.created_at DESC LIMIT ?`;
+        params.push(limit);
+        
+        const logs = await db.all(query, params);
+        return logs;
+    } catch (error) {
+        console.error('Error fetching activity logs:', error);
+        throw error;
+    }
 }   

@@ -3,8 +3,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/app/AuthContext";
 import { useRouter } from "next/navigation";
+import MiniCart from "./MiniCart";
+
 const Header = () => {
-  const { isLoggedIn, loading, username, setIsLoggedIn, setUsername, idCesta } = useAuth();
+  const { isLoggedIn, loading, username, setIsLoggedIn, setUsername } = useAuth();
   const router = useRouter();
 
   const handleLogout = () => {
@@ -13,9 +15,11 @@ const Header = () => {
     setUsername("");
     router.push("/login");
   };
+  
   if (loading) {
     return <div>Loading...</div>;
   }
+  
   return (
     <header className="flex justify-between items-center py-4 px-6 bg-white shadow-sm">
       <div className="flex items-center">
@@ -25,12 +29,12 @@ const Header = () => {
       </div>
       <nav>
         <div className="flex items-center space-x-4">
-        <Button asChild variant="ghost" className="ml-4">
-            <Link href={`/cesta/${idCesta}`}>Cesta</Link>
-          </Button>
           <Button asChild variant="ghost" className="ml-4">
             <Link href="/products">Productos</Link>
           </Button>
+
+          {/* Mini Cart */}
+          <MiniCart />
 
           {isLoggedIn ? (
             <>

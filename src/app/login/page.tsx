@@ -45,13 +45,7 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      // Hash the password before sending it to the server
-      const hashedPassword = await hashPassword(values.password);
-      // Replace the plain text password with the hashed version
-      values.password = hashedPassword;
-
-      // Function to hash the password
-     
+      // La contraseña se verifica en el servidor, no necesitamos hashearla aquí
       const user = await getUser(values.username, values.password);
       if (user) {
         setIsLoggedIn(true);

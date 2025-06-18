@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (storedUser) {
       const user = JSON.parse(storedUser);
       // Verify the token with the server
-      verifyToken(user.token).then(async (result: { valid: boolean; payload?: any }) => {
+      verifyToken(user.token).then(async (result: { valid: boolean; payload?: any; error?: string }) => {
         console.log("result", result);
         if (result.valid) {
           setIsLoggedIn(true);
@@ -83,15 +83,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await associateCestaIdWithUsername(idCesta.toString(), user.username);
           setLoading(false);
         } else {
+          console.log("Token validation failed:", result.error);
           logout();
           setLoading(false);
         }
-      })
+      }).catch((error) => {
+        console.error("Error during token verification:", error);
+        logout();
+        setLoading(false);
+      });
     } else {
       setLoading(false);
     }
-    // Verify the token with the server
-   
   }, [logout, idCesta]);
 
   return (
