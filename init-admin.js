@@ -10,6 +10,36 @@ async function initializeAdminTables() {
   try {
     console.log('🔧 Creando tablas de administración...');
     
+    // Crear tabla de usuarios
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        acceptPolicy BOOLEAN NOT NULL,
+        acceptMarketing BOOLEAN NOT NULL
+      )
+    `);
+    console.log('✅ Tabla users creada');
+
+    // Crear tabla de clientes
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS Customers (
+        CustomerID TEXT PRIMARY KEY,
+        CompanyName TEXT,
+        ContactName TEXT,
+        ContactTitle TEXT,
+        Address TEXT,
+        City TEXT,
+        Region TEXT,
+        PostalCode TEXT,
+        Country TEXT,
+        Phone TEXT,
+        Fax TEXT
+      )
+    `);
+    console.log('✅ Tabla Customers creada');
+
     // Crear tabla de roles de usuario
     await db.run(`
       CREATE TABLE IF NOT EXISTS user_roles (
